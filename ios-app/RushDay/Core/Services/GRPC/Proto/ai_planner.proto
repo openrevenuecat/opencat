@@ -1,0 +1,760 @@
+syntax = "proto3";
+
+package rushday.v1;
+
+option go_package = "github.com/rushday/backend/internal/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// AI Event Planner Service
+service AIEventPlannerService {
+  // Generate event plan summaries based on wizard inputs (streaming) - Step 1
+  rpc GenerateEventPlans(GenerateEventPlansRequest) returns (stream GenerateEventPlansStreamResponse);
+
+  // Get full plan details when user selects a plan - Step 2
+  rpc GetPlanDetails(GetPlanDetailsRequest) returns (GetPlanDetailsResponse);
+
+  // Get previously generated plans (cached summaries)
+  rpc GetGeneratedPlans(GetGeneratedPlansRequest) returns (GenerateEventPlansResponse);
+
+  // Create a real event from a selected plan
+  rpc CreateEventFromPlan(CreateEventFromPlanRequest) returns (CreateEventFromPlanResponse);
+
+  // Generate agenda items for an existing event
+  rpc GenerateAgenda(GenerateAgendaRequest) returns (GenerateAgendaResponse);
+
+  // Generate/recalculate expenses for an existing event
+  rpc GenerateExpenses(GenerateExpensesRequest) returns (GenerateExpensesResponse);
+
+  // Create a draft event from AI wizard (minimal validation, hidden from lists)
+  // Works both authenticated and anonymous (with session_id)
+  rpc CreateAIDraftEvent(CreateAIDraftEventRequest) returns (CreateAIDraftEventResponse);
+
+  // Publish a draft event (flip status to published)
+  rpc PublishAIDraftEvent(PublishAIDraftEventRequest) returns (PublishAIDraftEventResponse);
+
+  // Claim an anonymous draft after user signs in
+  rpc ClaimDraftEvent(ClaimDraftEventRequest) returns (ClaimDraftEventResponse);
+
+  // Generate a personalized invitation message for an event
+  rpc GenerateInviteMessage(GenerateInviteMessageRequest) returns (GenerateInviteMessageResponse);
+
+  // ====== AI Chat Methods ======
+
+  // Send a chat message to AI and get a response
+  rpc SendChatMessage(SendChatMessageRequest) returns (SendChatMessageResponse);
+
+  // Send a chat message to AI and stream the response
+  rpc SendChatMessageStream(SendChatMessageRequest) returns (stream ChatStreamResponse);
+
+  // Generate a topic-specific checklist
+  rpc GenerateTopicChecklist(GenerateTopicChecklistRequest) returns (GenerateTopicChecklistResponse);
+
+  // Save a checklist to an event
+  rpc SaveChecklist(SaveChecklistRequest) returns (SaveChecklistResponse);
+
+  // Unsave/remove a checklist from an event
+  rpc UnsaveChecklist(UnsaveChecklistRequest) returns (UnsaveChecklistResponse);
+
+  // Get chat history for an event
+  rpc GetChatHistory(GetChatHistoryRequest) returns (GetChatHistoryResponse);
+
+  // Get saved checklists for an event (deprecated - use GetSavedConversations)
+  rpc GetSavedChecklists(GetSavedChecklistsRequest) returns (GetSavedChecklistsResponse);
+
+  // Save a conversation to an event
+  rpc SaveConversation(SaveConversationRequest) returns (SaveConversationResponse);
+
+  // Unsave/remove a saved conversation from an event
+  rpc UnsaveConversation(UnsaveConversationRequest) returns (UnsaveConversationResponse);
+
+  // Get saved conversations for an event
+  rpc GetSavedConversations(GetSavedConversationsRequest) returns (GetSavedConversationsResponse);
+
+  // Update checklist item status (check/uncheck)
+  rpc UpdateChecklistItem(UpdateChecklistItemRequest) returns (UpdateChecklistItemResponse);
+
+  // Get AI-generated contextual hints for chat input
+  rpc GetChatHints(GetChatHintsRequest) returns (GetChatHintsResponse);
+}
+
+// MARK: - Enums
+
+enum AIEventType {
+  AI_EVENT_TYPE_UNSPECIFIED = 0;
+  AI_EVENT_TYPE_BIRTHDAY = 1;
+  AI_EVENT_TYPE_WEDDING = 2;
+  AI_EVENT_TYPE_BUSINESS = 3;
+  AI_EVENT_TYPE_BABY_SHOWER = 4;
+  AI_EVENT_TYPE_GRADUATION = 5;
+  AI_EVENT_TYPE_ENGAGEMENT = 6;
+  AI_EVENT_TYPE_ANNIVERSARY = 7;
+  AI_EVENT_TYPE_OTHER = 8;
+}
+
+enum GuestCountRange {
+  GUEST_COUNT_RANGE_UNSPECIFIED = 0;
+  GUEST_COUNT_RANGE_INTIMATE = 1;   // 1-10
+  GUEST_COUNT_RANGE_SMALL = 2;      // 10-25
+  GUEST_COUNT_RANGE_MEDIUM = 3;     // 25-50
+  GUEST_COUNT_RANGE_LARGE = 4;      // 50-100
+  GUEST_COUNT_RANGE_MASSIVE = 5;    // 100+
+}
+
+enum VenueType {
+  VENUE_TYPE_UNSPECIFIED = 0;
+  VENUE_TYPE_INDOOR_VENUE = 1;
+  VENUE_TYPE_OUTDOOR_SPACE = 2;
+  VENUE_TYPE_AT_HOME = 3;
+  VENUE_TYPE_HOTEL = 4;
+}
+
+enum BudgetTier {
+  BUDGET_TIER_UNSPECIFIED = 0;
+  BUDGET_TIER_ECONOMY = 1;      // up to $1,500
+  BUDGET_TIER_STANDARD = 2;     // $1,500 - $4,500
+  BUDGET_TIER_PREMIUM = 3;      // $4,500 - $7,500
+  BUDGET_TIER_LUXURY = 4;       // from $7,500
+}
+
+enum ServiceType {
+  SERVICE_TYPE_UNSPECIFIED = 0;
+  SERVICE_TYPE_CATERING = 1;
+  SERVICE_TYPE_DECORATION = 2;
+  SERVICE_TYPE_ENTERTAINMENT = 3;
+  SERVICE_TYPE_PHOTO_VIDEO = 4;
+  SERVICE_TYPE_INVITATIONS = 5;
+  SERVICE_TYPE_TRANSPORT = 6;
+}
+
+enum PlanTier {
+  PLAN_TIER_UNSPECIFIED = 0;
+  PLAN_TIER_AI_RECOMMENDED = 1;
+  PLAN_TIER_POPULAR = 2;
+  PLAN_TIER_STANDARD = 3;
+}
+
+enum PlanStyle {
+  PLAN_STYLE_UNSPECIFIED = 0;
+  PLAN_STYLE_CLASSIC = 1;
+  PLAN_STYLE_MODERN = 2;
+  PLAN_STYLE_NATURAL = 3;
+  PLAN_STYLE_LUXURY = 4;
+  PLAN_STYLE_CUSTOM = 5;
+}
+
+// Target plan style for single-plan generation requests (parallel mode)
+// Used to generate exactly 1 plan matching a specific budget tier/style
+enum TargetPlanStyle {
+  TARGET_PLAN_STYLE_UNSPECIFIED = 0;  // Generate multiple plans (default behavior)
+  TARGET_PLAN_STYLE_BUDGET = 1;       // Budget-friendly, cost-effective plan
+  TARGET_PLAN_STYLE_BALANCED = 2;     // Classic, well-rounded plan
+  TARGET_PLAN_STYLE_PREMIUM = 3;      // Luxury, high-end plan
+}
+
+// MARK: - Request/Response Messages
+
+message GenerateEventPlansRequest {
+  // Step 1: Event Type
+  AIEventType event_type = 1;
+  string custom_event_type = 2;  // If event_type is OTHER
+
+  // Step 2: Guest Count
+  GuestCountRange guest_range = 3;
+  int32 custom_guest_count = 4;  // Optional custom count
+
+  // Step 3: Event Details
+  string event_name = 5;
+  google.protobuf.Timestamp start_date = 6;
+  google.protobuf.Timestamp end_date = 7;
+  string venue_location = 8;
+
+  // Step 4: Venue Type
+  VenueType venue_type = 9;
+  string custom_venue_name = 10;
+  bool venue_skipped = 11;
+
+  // Step 5: Budget
+  BudgetTier budget_tier = 12;
+  int32 custom_budget_amount = 13;  // Optional custom amount
+
+  // Step 6: Services
+  repeated ServiceType selected_services = 14;
+  string custom_service = 15;
+  bool services_skipped = 16;
+
+  // Step 7: Preferences
+  string preferences_text = 17;
+  repeated string selected_tags = 18;
+  bool preferences_skipped = 19;
+
+  // Additional adjustment (from results page)
+  string adjustment_text = 20;
+
+  // Include full details in response (skips need for GetPlanDetails call)
+  bool include_tasks = 21;
+  bool include_agenda = 22;
+  bool include_vendors = 23;
+
+  // Target style for single-plan generation (parallel requests)
+  // If set (not UNSPECIFIED), generates exactly 1 plan matching this style
+  // If not set, generates 3 plans as before (legacy behavior)
+  TargetPlanStyle target_plan_style = 24;
+}
+
+message GenerateEventPlansResponse {
+  bool success = 1;
+  string generation_id = 2;
+  int64 processing_time_ms = 3;
+  repeated EventPlan plans = 4;
+  string error_message = 5;
+}
+
+message GetGeneratedPlansRequest {
+  string generation_id = 1;
+}
+
+message CreateEventFromPlanRequest {
+  string generation_id = 1;
+  string plan_id = 2;
+  bool create_tasks = 3;
+  bool create_agenda = 4;
+  bool create_budget_items = 5;
+}
+
+message CreateEventFromPlanResponse {
+  bool success = 1;
+  string event_id = 2;
+  string error_message = 3;
+}
+
+// MARK: - Plan Details (Step 2)
+
+message GetPlanDetailsRequest {
+  string generation_id = 1;
+  string plan_id = 2;
+}
+
+message GetPlanDetailsResponse {
+  bool success = 1;
+  EventPlan plan = 2;
+  string error_message = 3;
+}
+
+// MARK: - Streaming Messages
+
+message GenerateEventPlansStreamResponse {
+  oneof payload {
+    GenerationProgress progress = 1;
+    EventPlanSummary plan_summary = 2;  // Light summary for cards
+    GenerationComplete complete = 3;
+    GenerationError error = 4;
+  }
+}
+
+message GenerationProgress {
+  string step = 1;           // "analyzing", "generating", "optimizing"
+  int32 percentage = 2;      // 0-100
+  string message = 3;        // Human-readable message
+}
+
+message GenerationComplete {
+  string generation_id = 1;
+  int32 total_plans = 2;
+  int64 processing_time_ms = 3;
+}
+
+message GenerationError {
+  string code = 1;
+  string message = 2;
+}
+
+// MARK: - Plan Models
+
+// Light summary for results cards (Step 1)
+// Can optionally include full details if include_* flags are set in request
+message EventPlanSummary {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  PlanTier tier = 4;
+  PlanStyle style = 5;
+  int32 match_score = 6;
+  BudgetRange estimated_budget = 7;
+  repeated string highlights = 8;
+  // Short descriptions for card preview
+  string venue_description = 9;
+  string catering_description = 10;
+  string entertainment_description = 11;
+
+  // Optional detailed items (populated when include_* flags are set)
+  repeated SuggestedVendor suggested_vendors = 12;
+  repeated SuggestedTask suggested_tasks = 13;
+  repeated SuggestedAgendaItem suggested_agenda = 14;
+}
+
+// Full plan details (Step 2 - on demand)
+message EventPlan {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  PlanTier tier = 4;
+  PlanStyle style = 5;
+  int32 match_score = 6;  // 0-100 percentage
+
+  // Budget
+  BudgetRange estimated_budget = 7;
+
+  // Highlights
+  repeated string highlights = 8;
+
+  // Descriptions
+  string venue_description = 9;
+  string catering_description = 10;
+  string entertainment_description = 11;
+
+  // Suggested items
+  repeated SuggestedVendor suggested_vendors = 12;
+  repeated SuggestedTask suggested_tasks = 13;
+  repeated SuggestedAgendaItem suggested_agenda = 14;
+}
+
+message BudgetRange {
+  int32 min_amount = 1;
+  int32 max_amount = 2;
+  string currency = 3;
+}
+
+message SuggestedVendor {
+  string id = 1;
+  string name = 2;
+  string category = 3;
+  int32 estimated_cost = 4;
+  double rating = 5;
+  string image_url = 6;
+}
+
+message SuggestedTask {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  int32 days_before_event = 4;
+  string priority = 5;
+  string category = 6;
+}
+
+message SuggestedAgendaItem {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp start_time = 4;
+  int32 duration_minutes = 5;
+  string location = 6;
+}
+
+// MARK: - Generate Agenda for Existing Event
+
+message GenerateAgendaRequest {
+  string event_id = 1;
+  bool replace_existing = 2;  // true = delete old items first, false = append
+  repeated string existing_titles = 3;  // Titles already in the list (to avoid duplicates)
+}
+
+message GenerateAgendaResponse {
+  bool success = 1;
+  repeated GeneratedAgendaItem agenda_items = 2;
+  string error_message = 3;
+}
+
+message GeneratedAgendaItem {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  int32 duration_minutes = 6;
+}
+
+// MARK: - Generate Expenses for Existing Event
+
+message GenerateExpensesRequest {
+  string event_id = 1;
+  bool replace_existing = 2;  // true = delete old items first, false = append
+  repeated string current_agenda_items = 3;  // Current agenda activity titles (for context when generating expenses)
+}
+
+message GenerateExpensesResponse {
+  bool success = 1;
+  repeated GeneratedExpenseItem expense_items = 2;
+  string error_message = 3;
+}
+
+message GeneratedExpenseItem {
+  string id = 1;
+  string title = 2;
+  string category = 3;
+  int64 estimated_cost = 4;
+  string description = 5;
+}
+
+// MARK: - AI Draft Event Management
+
+message CreateAIDraftEventRequest {
+  string name = 1;
+  string event_type = 2;
+  google.protobuf.Timestamp date = 3;
+  int64 budget_plan = 4;      // Planned budget amount (for backwards compatibility, use budget_max if set)
+  int32 guests_plan = 5;      // Planned guest count
+  string cover_image = 6;     // Optional cover image URL
+  string session_id = 7;      // Device/session ID for anonymous drafts (used to claim later)
+  int64 budget_min = 8;       // Minimum budget amount (from tier range)
+  int64 budget_max = 9;       // Maximum budget amount (from tier range)
+  string venue = 10;          // Venue/location name (e.g., "Tashkent")
+}
+
+message CreateAIDraftEventResponse {
+  bool success = 1;
+  string event_id = 2;
+  string error_message = 3;
+}
+
+message PublishAIDraftEventRequest {
+  string event_id = 1;
+  string session_id = 2;      // Required if draft was created anonymously
+}
+
+message PublishAIDraftEventResponse {
+  bool success = 1;
+  string event_id = 2;
+  string error_message = 3;
+}
+
+message ClaimDraftEventRequest {
+  string event_id = 1;        // Draft event ID to claim
+  string session_id = 2;      // Session ID that was used to create the draft
+}
+
+message ClaimDraftEventResponse {
+  bool success = 1;
+  string event_id = 2;
+  string error_message = 3;
+}
+
+// MARK: - Generate Invite Message
+
+message GenerateInviteMessageRequest {
+  string event_id = 1;
+}
+
+message GenerateInviteMessageResponse {
+  bool success = 1;
+  string message = 2;
+  string error_message = 3;
+}
+
+// MARK: - AI Chat Enums
+
+enum ChatTopic {
+  CHAT_TOPIC_UNSPECIFIED = 0;
+  CHAT_TOPIC_GENERAL = 1;
+  CHAT_TOPIC_VENUE = 2;
+  CHAT_TOPIC_CATERING = 3;
+  CHAT_TOPIC_DECOR = 4;
+  CHAT_TOPIC_BUDGET = 5;
+  CHAT_TOPIC_MUSIC = 6;
+  CHAT_TOPIC_PHOTO_VIDEO = 7;
+  CHAT_TOPIC_ENTERTAINMENT = 8;
+  CHAT_TOPIC_TIMELINE = 9;
+  CHAT_TOPIC_INVITATIONS = 10;
+  CHAT_TOPIC_TRANSPORT = 11;
+}
+
+enum ChatMessageRole {
+  CHAT_MESSAGE_ROLE_UNSPECIFIED = 0;
+  CHAT_MESSAGE_ROLE_USER = 1;
+  CHAT_MESSAGE_ROLE_ASSISTANT = 2;
+  CHAT_MESSAGE_ROLE_SYSTEM = 3;
+}
+
+// MARK: - AI Chat Messages
+
+message SendChatMessageRequest {
+  string event_id = 1;
+  string message = 2;
+  ChatTopic topic = 3;  // Optional: context topic for the conversation
+  string conversation_id = 4;  // Optional: to continue existing conversation
+}
+
+message SendChatMessageResponse {
+  bool success = 1;
+  string conversation_id = 2;
+  ChatMessage response_message = 3;
+  ChatChecklist checklist = 4;  // Optional: if AI generates a checklist
+  repeated string suggested_topics = 5;  // Follow-up topic suggestions
+  string error_message = 6;
+  string hint_text = 7;  // Contextual hint for the input field placeholder
+  SuggestedAction suggested_action = 8;  // Optional: actionable suggestion (add to tasks, agenda, etc.)
+  repeated ToolExecution tool_executions = 9;  // List of tool calls made during the response
+}
+
+// Represents a tool call that was executed during the AI response
+message ToolExecution {
+  string tool_name = 1;     // Name of the tool called (e.g., "get_tasks", "search_web")
+  string status = 2;        // "success", "error", or "pending_approval"
+  string summary = 3;       // Human-readable summary (e.g., "Found 3 tasks")
+}
+
+// Action types the AI can suggest
+enum SuggestedActionType {
+  SUGGESTED_ACTION_TYPE_NONE = 0;
+  // Tasks
+  SUGGESTED_ACTION_TYPE_ADD_TASKS = 1;      // Add items to task list
+  SUGGESTED_ACTION_TYPE_REMOVE_TASKS = 5;   // Remove items from task list
+  SUGGESTED_ACTION_TYPE_UPDATE_TASKS = 6;   // Update existing tasks
+  // Agenda
+  SUGGESTED_ACTION_TYPE_ADD_AGENDA = 2;     // Add items to agenda
+  SUGGESTED_ACTION_TYPE_REMOVE_AGENDA = 7;  // Remove items from agenda
+  SUGGESTED_ACTION_TYPE_UPDATE_AGENDA = 8;  // Update existing agenda items
+  // Expenses
+  SUGGESTED_ACTION_TYPE_ADD_EXPENSES = 3;   // Add items to expenses
+  SUGGESTED_ACTION_TYPE_REMOVE_EXPENSES = 9;  // Remove items from expenses
+  SUGGESTED_ACTION_TYPE_UPDATE_EXPENSES = 10; // Update existing expenses
+  // Legacy
+  SUGGESTED_ACTION_TYPE_UPDATE_BUDGET = 4;  // Update budget settings (deprecated)
+}
+
+// Suggested action the user can take
+message SuggestedAction {
+  SuggestedActionType action_type = 1;
+  string prompt_text = 2;  // e.g., "Would you like me to add these to your tasks?"
+  string confirm_button_text = 3;  // e.g., "Add to Tasks"
+  string decline_button_text = 4;  // e.g., "No thanks"
+  repeated SuggestedActionItem items = 5;  // Items to add if user confirms
+}
+
+// Item that can be added/removed/updated via suggested action
+message SuggestedActionItem {
+  string id = 7;  // ID of existing item (for remove/update operations)
+  string title = 1;
+  string description = 2;
+  string category = 3;  // For tasks: category, for expenses: category
+  int64 amount = 4;  // For expenses: estimated amount
+  string start_time = 5;  // For agenda: start time (HH:MM format)
+  int32 duration_minutes = 6;  // For agenda: duration
+  string new_title = 8;  // For update: new title
+  string new_description = 9;  // For update: new description
+}
+
+message ChatStreamResponse {
+  oneof payload {
+    ChatStreamDelta delta = 1;
+    ChatStreamComplete complete = 2;
+    ChatStreamError error = 3;
+    ChatStreamToolExecution tool_execution = 4;  // Real-time tool execution updates
+  }
+}
+
+// Streamed when a tool is executed during the response
+message ChatStreamToolExecution {
+  string tool_name = 1;
+  string status = 2;  // "success", "error", "pending_approval"
+  string summary = 3;
+}
+
+message ChatStreamDelta {
+  string text = 1;  // Partial text content
+  string conversation_id = 2;
+}
+
+message ChatStreamComplete {
+  string conversation_id = 1;
+  ChatMessage full_message = 2;
+  ChatChecklist checklist = 3;  // Optional: complete checklist if generated
+  repeated string suggested_topics = 4;
+  string hint_text = 5;  // Contextual hint for the input field placeholder
+  SuggestedAction suggested_action = 6;  // Optional: action for user approval
+  repeated ToolExecution tool_executions = 7;  // Tools executed during response
+}
+
+message ChatStreamError {
+  string code = 1;
+  string message = 2;
+}
+
+message ChatMessage {
+  string id = 1;
+  string conversation_id = 2;
+  ChatMessageRole role = 3;
+  string content = 4;
+  ChatTopic topic = 5;
+  google.protobuf.Timestamp created_at = 6;
+  ChatChecklist checklist = 7;  // Optional: associated checklist
+}
+
+message ChatChecklist {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  ChatTopic topic = 4;
+  repeated ChatChecklistItem items = 5;
+  bool is_saved = 6;  // Whether the checklist is saved to the event
+  google.protobuf.Timestamp created_at = 7;
+  string conversation_id = 8;  // Conversation this checklist belongs to
+}
+
+message ChatChecklistItem {
+  string id = 1;
+  string text = 2;
+  bool is_checked = 3;
+  int32 order = 4;  // Display order
+  string notes = 5;  // Optional user notes
+}
+
+// MARK: - Generate Topic Checklist
+
+message GenerateTopicChecklistRequest {
+  string event_id = 1;
+  ChatTopic topic = 2;
+  string custom_prompt = 3;  // Optional: custom user prompt for context
+}
+
+message GenerateTopicChecklistResponse {
+  bool success = 1;
+  ChatChecklist checklist = 2;
+  string error_message = 3;
+  ChatMessage message = 4;  // AI assistant message with the checklist attached
+}
+
+// MARK: - Save/Unsave Checklist
+
+message SaveChecklistRequest {
+  string event_id = 1;
+  string checklist_id = 2;
+  repeated ChatChecklistItem items = 3;  // Updated items to save
+}
+
+message SaveChecklistResponse {
+  bool success = 1;
+  string checklist_id = 2;
+  string error_message = 3;
+}
+
+message UnsaveChecklistRequest {
+  string event_id = 1;
+  string checklist_id = 2;
+}
+
+message UnsaveChecklistResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// MARK: - Get Chat History
+
+message GetChatHistoryRequest {
+  string event_id = 1;
+  string conversation_id = 2;  // Optional: specific conversation
+  ChatTopic topic = 3;  // Optional: filter by topic
+  int32 limit = 4;  // Max messages to return (default 50)
+  string cursor = 5;  // Pagination cursor
+}
+
+message GetChatHistoryResponse {
+  bool success = 1;
+  repeated ChatMessage messages = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+  string error_message = 5;
+}
+
+// MARK: - Get Saved Checklists
+
+message GetSavedChecklistsRequest {
+  string event_id = 1;
+  ChatTopic topic = 2;  // Optional: filter by topic
+}
+
+message GetSavedChecklistsResponse {
+  bool success = 1;
+  repeated ChatChecklist checklists = 2;
+  string error_message = 3;
+}
+
+// MARK: - Save/Unsave Conversation
+
+message SaveConversationRequest {
+  string event_id = 1;
+  string conversation_id = 2;
+  string title = 3;  // Optional: custom title for the saved conversation
+}
+
+message SaveConversationResponse {
+  bool success = 1;
+  SavedConversation conversation = 2;
+  string error_message = 3;
+}
+
+message UnsaveConversationRequest {
+  string event_id = 1;
+  string conversation_id = 2;
+}
+
+message UnsaveConversationResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message GetSavedConversationsRequest {
+  string event_id = 1;
+}
+
+message GetSavedConversationsResponse {
+  bool success = 1;
+  repeated SavedConversation conversations = 2;
+  string error_message = 3;
+}
+
+// Represents a saved conversation
+message SavedConversation {
+  string id = 1;
+  string event_id = 2;
+  string conversation_id = 3;
+  string title = 4;  // Auto-generated or custom title
+  string preview = 5;  // First message or summary
+  int32 message_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp saved_at = 8;
+}
+
+// MARK: - Update Checklist Item
+
+message UpdateChecklistItemRequest {
+  string event_id = 1;
+  string checklist_id = 2;
+  string item_id = 3;
+  bool is_checked = 4;
+  string notes = 5;  // Optional: update notes
+}
+
+message UpdateChecklistItemResponse {
+  bool success = 1;
+  ChatChecklistItem updated_item = 2;
+  int32 completed_count = 3;  // Total completed items in checklist
+  int32 total_count = 4;  // Total items in checklist
+  string error_message = 5;
+}
+
+// MARK: - Get Chat Hints
+
+message GetChatHintsRequest {
+  string event_id = 1;
+  string conversation_id = 2;  // Optional: for context-aware hints based on conversation
+  ChatTopic last_topic = 3;    // Optional: last topic discussed for relevance
+}
+
+message GetChatHintsResponse {
+  bool success = 1;
+  string primary_hint = 2;           // Main hint text for input placeholder
+  repeated string suggested_hints = 3;  // Alternative hints for rotation
+  string error_message = 4;
+}

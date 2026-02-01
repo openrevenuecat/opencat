@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package rushday.v1;
+
+option go_package = "github.com/rushday/backend/internal/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// User service for managing user profiles and authentication
+
+service UserService {
+  // Get the current authenticated user's profile
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (User);
+
+  // Update user profile
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+
+  // Register or update device for push notifications
+  rpc RegisterDevice(RegisterDeviceRequest) returns (User);
+
+  // Remove a device from push notifications
+  rpc RemoveDevice(RemoveDeviceRequest) returns (User);
+
+  // Update notification preferences
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (User);
+
+  // Delete user account
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // User covers management
+  rpc ListUserCovers(ListUserCoversRequest) returns (ListUserCoversResponse);
+  rpc AddUserCover(AddUserCoverRequest) returns (UserCover);
+  rpc RemoveUserCover(RemoveUserCoverRequest) returns (DeleteUserResponse);
+
+  // Data migration from Firestore (called once per user on app update)
+  rpc MigrateUserData(MigrateUserDataRequest) returns (MigrateUserDataResponse);
+}
+
+message User {
+  string id = 1;
+  string firebase_uid = 2;
+  string name = 3;
+  string email = 4;
+  optional string avatar = 5;
+  string currency = 6;
+  repeated Device devices = 7;
+  NotificationPreferences notification_preferences = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  // New fields from Firestore
+  optional string photo_url = 11;
+  optional string language_code = 12;
+  optional string time_zone = 13;
+  bool is_premium = 14;
+  optional google.protobuf.Timestamp expired_date = 15;
+  optional google.protobuf.Timestamp purchase_date = 16;
+  optional string package_type = 17;
+  repeated string covers = 18;  // saved cover image URLs
+}
+
+message Device {
+  string id = 1;
+  string fcm_token = 2;
+  optional string platform = 3;  // ios, android
+  optional int32 timezone_offset = 4;  // timezone offset in minutes
+}
+
+message NotificationPreferences {
+  string time = 1;  // preferred notification time (e.g., "09:00")
+  bool on_the_day = 2;
+  bool week_before = 3;
+  bool tasks = 4;
+  bool agenda = 5;
+  bool share = 6;
+  bool suggests = 7;
+}
+
+// Request/Response messages
+
+message GetCurrentUserRequest {}
+
+message UpdateUserRequest {
+  optional string name = 1;
+  optional string email = 2;
+  optional string avatar = 3;
+  optional string currency = 4;
+  optional string photo_url = 5;
+  optional string language_code = 6;
+  optional string time_zone = 7;
+}
+
+// User covers management
+message AddUserCoverRequest {
+  string cover_url = 1;
+}
+
+message RemoveUserCoverRequest {
+  string cover_id = 1;
+}
+
+message ListUserCoversRequest {}
+
+message ListUserCoversResponse {
+  repeated UserCover covers = 1;
+}
+
+message UserCover {
+  string id = 1;
+  string cover_url = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+message RegisterDeviceRequest {
+  string fcm_token = 1;
+  optional string platform = 2;
+  optional int32 timezone_offset = 3;
+}
+
+message RemoveDeviceRequest {
+  string fcm_token = 1;
+}
+
+message UpdateNotificationPreferencesRequest {
+  optional string time = 1;
+  optional bool on_the_day = 2;
+  optional bool week_before = 3;
+  optional bool tasks = 4;
+  optional bool agenda = 5;
+  optional bool share = 6;
+  optional bool suggests = 7;
+}
+
+message DeleteUserRequest {}
+
+message DeleteUserResponse {
+  bool success = 1;
+}
+
+// Migration messages
+message MigrateUserDataRequest {
+  string app_version = 1;  // Client app version triggering migration
+}
+
+message MigrateUserDataResponse {
+  bool success = 1;
+  bool already_migrated = 2;  // True if user was already migrated
+  MigrationStats stats = 3;
+  string message = 4;
+}
+
+message MigrationStats {
+  int32 events_migrated = 1;
+  int32 tasks_migrated = 2;
+  int32 guests_migrated = 3;
+  int32 agendas_migrated = 4;
+  int32 expenses_migrated = 5;
+  int32 vendors_migrated = 6;
+  int32 devices_migrated = 7;
+}

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "onboarding_contact.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

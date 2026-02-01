@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package rushday.v1;
+
+option go_package = "github.com/rushday/backend/internal/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// Vendor service for managing service providers
+
+service VendorService {
+  rpc CreateVendor(CreateVendorRequest) returns (Vendor);
+  rpc GetVendor(GetVendorRequest) returns (Vendor);
+  rpc ListVendors(ListVendorsRequest) returns (ListVendorsResponse);
+  rpc UpdateVendor(UpdateVendorRequest) returns (Vendor);
+  rpc DeleteVendor(DeleteVendorRequest) returns (DeleteVendorResponse);
+  rpc ToggleFavorite(ToggleFavoriteRequest) returns (Vendor);
+}
+
+message Vendor {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  optional string phone_number = 4;
+  optional string avatar = 5;
+  optional string notes = 6;
+  optional VendorLinks links = 7;
+  bool is_favorite = 8;
+  optional string device_id = 9;
+  optional string email = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message VendorLinks {
+  optional string whatsapp = 1;
+  optional string telegram = 2;
+  optional string instagram = 3;
+  optional string facebook = 4;
+}
+
+// Request/Response messages
+
+message CreateVendorRequest {
+  string name = 1;
+  optional string phone_number = 2;
+  optional string avatar = 3;
+  optional string notes = 4;
+  optional VendorLinks links = 5;
+  optional string email = 6;
+}
+
+message GetVendorRequest {
+  string id = 1;
+}
+
+message ListVendorsRequest {
+  optional bool favorites_only = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
+}
+
+message ListVendorsResponse {
+  repeated Vendor vendors = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateVendorRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string phone_number = 3;
+  optional string avatar = 4;
+  optional string notes = 5;
+  optional VendorLinks links = 6;
+  optional string email = 7;
+}
+
+message DeleteVendorRequest {
+  string id = 1;
+}
+
+message DeleteVendorResponse {
+  bool success = 1;
+}
+
+message ToggleFavoriteRequest {
+  string id = 1;
+}

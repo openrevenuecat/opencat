@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package rushday.v1;
+
+option go_package = "github.com/rushday/backend/internal/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// Invitation service for managing event invitations
+
+service InvitationService {
+  rpc CreateInvitation(CreateInvitationRequest) returns (Invitation);
+  rpc GetInvitation(GetInvitationRequest) returns (Invitation);
+  rpc ListInvitations(ListInvitationsRequest) returns (ListInvitationsResponse);
+  rpc UpdateInvitation(UpdateInvitationRequest) returns (Invitation);
+  rpc DeleteInvitation(DeleteInvitationRequest) returns (DeleteInvitationResponse);
+
+  // Get invitation by public share link (no auth required)
+  rpc GetPublicInvitation(GetPublicInvitationRequest) returns (PublicInvitation);
+}
+
+message Invitation {
+  string id = 1;
+  string user_id = 2;
+  string header = 3;
+  string hosts = 4;
+  string name = 5;
+  google.protobuf.Timestamp date = 6;
+  string location = 7;
+  int32 template_id = 8;
+  string image = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// Public invitation (limited data for sharing)
+message PublicInvitation {
+  string header = 1;
+  string hosts = 2;
+  string name = 3;
+  google.protobuf.Timestamp date = 4;
+  string location = 5;
+  int32 template_id = 6;
+  string image = 7;
+}
+
+// Request/Response messages
+
+message CreateInvitationRequest {
+  string header = 1;
+  string hosts = 2;
+  string name = 3;
+  google.protobuf.Timestamp date = 4;
+  string location = 5;
+  int32 template_id = 6;
+  string image = 7;
+}
+
+message GetInvitationRequest {
+  string id = 1;
+}
+
+message GetPublicInvitationRequest {
+  string id = 1;
+}
+
+message ListInvitationsRequest {
+  optional int32 page = 1;
+  optional int32 limit = 2;
+}
+
+message ListInvitationsResponse {
+  repeated Invitation invitations = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateInvitationRequest {
+  string id = 1;
+  optional string header = 2;
+  optional string hosts = 3;
+  optional string name = 4;
+  optional google.protobuf.Timestamp date = 5;
+  optional string location = 6;
+  optional int32 template_id = 7;
+  optional string image = 8;
+}
+
+message DeleteInvitationRequest {
+  string id = 1;
+}
+
+message DeleteInvitationResponse {
+  bool success = 1;
+}

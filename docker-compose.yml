@@ -1,0 +1,20 @@
+services:
+  opencat:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      OPENCAT__DATABASE__URL: "sqlite:///data/opencat.db"
+      OPENCAT__SERVER__SECRET_KEY: "${OPENCAT_SECRET_KEY:-change-me-to-a-random-string-at-least-32-chars}"
+    volumes:
+      - opencat-data:/data
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://opencat:8080"
+
+volumes:
+  opencat-data:

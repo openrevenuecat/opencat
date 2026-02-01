@@ -1,0 +1,611 @@
+syntax = "proto3";
+
+package rushday.v1;
+
+option go_package = "github.com/rushday/backend/internal/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// Event service for managing events and related entities
+
+service EventService {
+  // Event CRUD operations
+  rpc CreateEvent(CreateEventRequest) returns (Event);
+  rpc GetEvent(GetEventRequest) returns (Event);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc StreamEvents(StreamEventsRequest) returns (stream StreamEventsResponse);
+  rpc UpdateEvent(UpdateEventRequest) returns (Event);
+  rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse);
+
+  // Event sharing
+  rpc ShareEvent(ShareEventRequest) returns (Event);
+  rpc AcceptSharedEvent(AcceptSharedEventRequest) returns (Event);
+  rpc RemoveSharedUser(RemoveSharedUserRequest) returns (Event);
+  rpc UpdateSharedUser(UpdateSharedUserRequest) returns (Event);
+
+  // Task operations
+  rpc CreateTask(CreateTaskRequest) returns (Task);
+  rpc GetTask(GetTaskRequest) returns (Task);
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc UpdateTask(UpdateTaskRequest) returns (Task);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc ToggleTaskDone(ToggleTaskDoneRequest) returns (Task);
+  rpc ReorderTasks(ReorderTasksRequest) returns (ReorderTasksResponse);
+
+  // Guest operations
+  rpc CreateGuest(CreateGuestRequest) returns (Guest);
+  rpc GetGuest(GetGuestRequest) returns (Guest);
+  rpc ListGuests(ListGuestsRequest) returns (ListGuestsResponse);
+  rpc UpdateGuest(UpdateGuestRequest) returns (Guest);
+  rpc DeleteGuest(DeleteGuestRequest) returns (DeleteGuestResponse);
+  rpc BatchCreateGuests(BatchCreateGuestsRequest) returns (BatchCreateGuestsResponse);
+
+  // Guest invitation operations (for shareable RSVP links)
+  rpc CreateGuestInvitation(CreateGuestInvitationRequest) returns (GuestInvitation);
+  rpc GetPublicGuestInvitation(GetPublicGuestInvitationRequest) returns (PublicGuestInvitation);
+
+  // Agenda operations
+  rpc CreateAgenda(CreateAgendaRequest) returns (Agenda);
+  rpc GetAgenda(GetAgendaRequest) returns (Agenda);
+  rpc ListAgendas(ListAgendasRequest) returns (ListAgendasResponse);
+  rpc UpdateAgenda(UpdateAgendaRequest) returns (Agenda);
+  rpc DeleteAgenda(DeleteAgendaRequest) returns (DeleteAgendaResponse);
+
+  // Budget operations
+  rpc CreateBudget(CreateBudgetRequest) returns (Budget);
+  rpc GetBudget(GetBudgetRequest) returns (Budget);
+  rpc ListBudgets(ListBudgetsRequest) returns (ListBudgetsResponse);
+  rpc UpdateBudget(UpdateBudgetRequest) returns (Budget);
+  rpc DeleteBudget(DeleteBudgetRequest) returns (DeleteBudgetResponse);
+  rpc AddPayment(AddPaymentRequest) returns (Budget);
+  rpc RemovePayment(RemovePaymentRequest) returns (Budget);
+
+  // Draft Event operations
+  rpc CreateDraftEvent(CreateDraftEventRequest) returns (DraftEvent);
+  rpc GetDraftEvent(GetDraftEventRequest) returns (DraftEvent);
+  rpc ListDraftEvents(ListDraftEventsRequest) returns (ListDraftEventsResponse);
+  rpc UpdateDraftEvent(UpdateDraftEventRequest) returns (DraftEvent);
+  rpc DeleteDraftEvent(DeleteDraftEventRequest) returns (DeleteDraftEventResponse);
+
+  // Event Budget operations
+  rpc GetEventBudget(GetEventBudgetRequest) returns (EventBudget);
+  rpc UpsertEventBudget(UpsertEventBudgetRequest) returns (EventBudget);
+}
+
+// Core entity messages
+
+message Event {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  google.protobuf.Timestamp date = 4;
+  optional int64 budget_plan = 5;
+  optional int32 guests_plan = 6;
+  optional string image = 7;
+  optional string type = 8;
+  repeated SharedUser shared = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  // New fields from Firestore
+  optional google.protobuf.Timestamp end_date = 12;
+  optional string venue = 13;
+  optional string theme_idea = 14;
+  optional string custom_idea = 15;
+  optional string invite_message = 16;
+  bool is_all_day = 17;
+  bool is_draft = 18;
+  // Owner details
+  optional string owner_name = 19;
+}
+
+message SharedUser {
+  string name = 1;
+  bool accepted = 2;
+  optional string user_id = 3;
+  string secret = 4;
+  string access_role = 5;  // "admin" or "viewer"
+}
+
+message Task {
+  string id = 1;
+  string event_id = 2;
+  string name = 3;
+  bool is_done = 4;
+  optional string vendor_id = 5;
+  optional google.protobuf.Timestamp notification = 6;
+  optional string notes = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // New fields from Firestore
+  bool is_all_day = 10;
+  int32 order_number = 11;
+  optional int32 notification_id = 12;
+}
+
+message Guest {
+  string id = 1;
+  string event_id = 2;
+  string name = 3;
+  optional int32 accompany = 4;
+  optional GuestContact contact = 5;
+  GuestStatus status = 6;
+  optional string device_id = 7;
+  optional string notes = 8;
+  optional google.protobuf.Timestamp date = 9;
+  repeated string accompany_list = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message GuestContact {
+  optional string phone_number = 1;
+  optional string email = 2;
+}
+
+enum GuestStatus {
+  GUEST_STATUS_UNSPECIFIED = 0;
+  GUEST_STATUS_INVITED = 1;
+  GUEST_STATUS_NOT_INVITED = 2;
+  GUEST_STATUS_ACCEPTED = 3;
+  GUEST_STATUS_DECLINED = 4;
+}
+
+message Agenda {
+  string id = 1;
+  string event_id = 2;
+  string title = 3;
+  optional string notes = 4;
+  bool is_done = 5;
+  optional google.protobuf.Timestamp date = 6;
+  optional google.protobuf.Timestamp start_time = 7;
+  optional google.protobuf.Timestamp end_time = 8;
+  optional string icon_id = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message Budget {
+  string id = 1;
+  string event_id = 2;
+  string title = 3;
+  optional int64 total_amount = 4;
+  repeated Payment payments = 5;
+  optional string notes = 6;
+  google.protobuf.Timestamp date = 7;
+  optional string icon_id = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message Payment {
+  string id = 1;
+  int64 amount = 2;
+  google.protobuf.Timestamp date = 3;
+}
+
+// Event Request/Response messages
+
+message CreateEventRequest {
+  string name = 1;
+  google.protobuf.Timestamp date = 2;
+  optional int64 budget_plan = 3;
+  optional int32 guests_plan = 4;
+  optional string image = 5;
+  optional string type = 6;
+}
+
+message GetEventRequest {
+  string id = 1;
+}
+
+message ListEventsRequest {
+  optional int32 page = 1;
+  optional int32 limit = 2;
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// Streaming events for progressive loading on home page
+message StreamEventsRequest {
+  optional int32 batch_size = 1; // Number of events per batch (default: 2)
+}
+
+message StreamEventsResponse {
+  repeated Event events = 1;  // Batch of events
+  int32 total = 2;            // Total number of events (sent with first batch)
+  bool is_last = 3;           // True if this is the last batch
+}
+
+message UpdateEventRequest {
+  string id = 1;
+  optional string name = 2;
+  optional google.protobuf.Timestamp date = 3;
+  optional int64 budget_plan = 4;
+  optional int32 guests_plan = 5;
+  optional string image = 6;
+  optional string type = 7;
+  // Additional event details
+  optional google.protobuf.Timestamp end_date = 8;
+  optional string venue = 9;
+  optional string theme_idea = 10;
+  optional string custom_idea = 11;
+  optional string invite_message = 12;
+  optional bool is_all_day = 13;
+  optional bool is_draft = 14;
+}
+
+message DeleteEventRequest {
+  string id = 1;
+}
+
+message DeleteEventResponse {
+  bool success = 1;
+}
+
+message ShareEventRequest {
+  string event_id = 1;
+  string name = 2;
+}
+
+message AcceptSharedEventRequest {
+  string secret = 1;
+}
+
+message RemoveSharedUserRequest {
+  string event_id = 1;
+  string secret = 2;
+}
+
+message UpdateSharedUserRequest {
+  string event_id = 1;
+  string secret = 2;
+  string access_role = 3;  // "admin" or "viewer"
+}
+
+// Task Request/Response messages
+
+message CreateTaskRequest {
+  string event_id = 1;
+  string name = 2;
+  optional string vendor_id = 3;
+  optional google.protobuf.Timestamp notification = 4;
+  optional string notes = 5;
+}
+
+message GetTaskRequest {
+  string id = 1;
+}
+
+message ListTasksRequest {
+  string event_id = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
+}
+
+message ListTasksResponse {
+  repeated Task tasks = 1;
+  int32 total = 2;
+}
+
+message UpdateTaskRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string vendor_id = 3;
+  optional google.protobuf.Timestamp notification = 4;
+  optional string notes = 5;
+}
+
+message DeleteTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskResponse {
+  bool success = 1;
+}
+
+message ToggleTaskDoneRequest {
+  string id = 1;
+}
+
+message ReorderTasksRequest {
+  string event_id = 1;
+  repeated string task_ids = 2;  // Task IDs in desired order (index = new order_number)
+}
+
+message ReorderTasksResponse {
+  repeated Task tasks = 1;
+}
+
+// Guest Request/Response messages
+
+message CreateGuestRequest {
+  string event_id = 1;
+  string name = 2;
+  optional int32 accompany = 3;
+  optional GuestContact contact = 4;
+  optional GuestStatus status = 5;
+  optional string notes = 6;
+  repeated string accompany_list = 7;
+}
+
+message GetGuestRequest {
+  string id = 1;
+}
+
+message ListGuestsRequest {
+  string event_id = 1;
+  optional GuestStatus status = 2;
+  optional int32 page = 3;
+  optional int32 limit = 4;
+}
+
+message ListGuestsResponse {
+  repeated Guest guests = 1;
+  int32 total = 2;
+}
+
+message UpdateGuestRequest {
+  string id = 1;
+  optional string name = 2;
+  optional int32 accompany = 3;
+  optional GuestContact contact = 4;
+  optional GuestStatus status = 5;
+  optional string notes = 6;
+  repeated string accompany_list = 7;
+}
+
+message DeleteGuestRequest {
+  string id = 1;
+}
+
+message DeleteGuestResponse {
+  bool success = 1;
+}
+
+message BatchCreateGuestsRequest {
+  string event_id = 1;
+  repeated CreateGuestRequest guests = 2;
+}
+
+message BatchCreateGuestsResponse {
+  repeated Guest guests = 1;
+  int32 created_count = 2;
+}
+
+// Agenda Request/Response messages
+
+message CreateAgendaRequest {
+  string event_id = 1;
+  string title = 2;
+  optional string notes = 3;
+  optional google.protobuf.Timestamp date = 4;
+  optional google.protobuf.Timestamp start_time = 5;
+  optional google.protobuf.Timestamp end_time = 6;
+  optional string icon_id = 7;
+}
+
+message GetAgendaRequest {
+  string id = 1;
+}
+
+message ListAgendasRequest {
+  string event_id = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
+}
+
+message ListAgendasResponse {
+  repeated Agenda agendas = 1;
+  int32 total = 2;
+}
+
+message UpdateAgendaRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string notes = 3;
+  optional bool is_done = 4;
+  optional google.protobuf.Timestamp date = 5;
+  optional google.protobuf.Timestamp start_time = 6;
+  optional google.protobuf.Timestamp end_time = 7;
+  optional string icon_id = 8;
+}
+
+message DeleteAgendaRequest {
+  string id = 1;
+}
+
+message DeleteAgendaResponse {
+  bool success = 1;
+}
+
+// Budget Request/Response messages
+
+message CreateBudgetRequest {
+  string event_id = 1;
+  string title = 2;
+  optional int64 total_amount = 3;
+  optional string notes = 4;
+  google.protobuf.Timestamp date = 5;
+  optional string icon_id = 6;
+}
+
+message GetBudgetRequest {
+  string id = 1;
+}
+
+message ListBudgetsRequest {
+  string event_id = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
+}
+
+message ListBudgetsResponse {
+  repeated Budget budgets = 1;
+  int32 total = 2;
+}
+
+message UpdateBudgetRequest {
+  string id = 1;
+  optional string title = 2;
+  optional int64 total_amount = 3;
+  optional string notes = 4;
+  optional google.protobuf.Timestamp date = 5;
+  optional string icon_id = 6;
+}
+
+message DeleteBudgetRequest {
+  string id = 1;
+}
+
+message DeleteBudgetResponse {
+  bool success = 1;
+}
+
+message AddPaymentRequest {
+  string budget_id = 1;
+  int64 amount = 2;
+  google.protobuf.Timestamp date = 3;
+}
+
+message RemovePaymentRequest {
+  string budget_id = 1;
+}
+
+// Draft Events
+message DraftEvent {
+  string id = 1;
+  string user_id = 2;
+  string status = 3;  // pre_generation, generated, created
+  optional string name = 4;
+  optional google.protobuf.Timestamp start_date = 5;
+  optional google.protobuf.Timestamp end_date = 6;
+  optional string cover_image = 7;
+  optional string venue = 8;
+  optional string currency_code = 9;
+  optional string currency_symbol = 10;
+  optional string event_type_id = 11;
+  optional double budget_limit = 12;
+  optional string custom_idea = 13;
+  bool is_all_day = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+message CreateDraftEventRequest {
+  optional string name = 1;
+  optional google.protobuf.Timestamp start_date = 2;
+  optional google.protobuf.Timestamp end_date = 3;
+  optional string cover_image = 4;
+  optional string venue = 5;
+  optional string currency_code = 6;
+  optional string currency_symbol = 7;
+  optional string event_type_id = 8;
+  optional double budget_limit = 9;
+  optional string custom_idea = 10;
+  optional bool is_all_day = 11;
+}
+
+message GetDraftEventRequest {
+  string id = 1;
+}
+
+message ListDraftEventsRequest {
+  optional int32 page = 1;
+  optional int32 limit = 2;
+}
+
+message ListDraftEventsResponse {
+  repeated DraftEvent drafts = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateDraftEventRequest {
+  string id = 1;
+  optional string status = 2;
+  optional string name = 3;
+  optional google.protobuf.Timestamp start_date = 4;
+  optional google.protobuf.Timestamp end_date = 5;
+  optional string cover_image = 6;
+  optional string venue = 7;
+  optional string currency_code = 8;
+  optional string currency_symbol = 9;
+  optional string event_type_id = 10;
+  optional double budget_limit = 11;
+  optional string custom_idea = 12;
+  optional bool is_all_day = 13;
+}
+
+message DeleteDraftEventRequest {
+  string id = 1;
+}
+
+message DeleteDraftEventResponse {
+  bool success = 1;
+}
+
+// Event Budget (budget metadata for an event)
+message EventBudget {
+  string event_id = 1;
+  optional string currency_code = 2;
+  optional string currency_symbol = 3;
+  optional double planned_budget = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GetEventBudgetRequest {
+  string event_id = 1;
+}
+
+message UpsertEventBudgetRequest {
+  string event_id = 1;
+  optional string currency_code = 2;
+  optional string currency_symbol = 3;
+  optional double planned_budget = 4;
+}
+
+// Guest Invitation messages (for shareable RSVP links)
+// Matches Flutter's InvitationModel for web viewer compatibility
+
+message GuestInvitation {
+  string id = 1;
+  string guest_id = 2;
+  string user_id = 3;      // Event owner's user ID
+  string event_id = 4;
+  optional string message = 5;
+  optional string template_name = 6;
+  optional string invite_status = 7;  // pending, viewed, responded
+  string invite_link = 8;  // Pre-generated shareable link
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CreateGuestInvitationRequest {
+  string guest_id = 1;
+  string event_id = 2;
+  optional string message = 3;
+  optional string template_name = 4;
+}
+
+message GetPublicGuestInvitationRequest {
+  string encoded_data = 1;  // Base64 URL encoded: invitationId/userId
+}
+
+// Public invitation data (no auth required, for web viewer)
+message PublicGuestInvitation {
+  string event_name = 1;
+  google.protobuf.Timestamp event_date = 2;
+  optional google.protobuf.Timestamp event_end_date = 3;
+  optional string event_venue = 4;
+  optional string event_image = 5;
+  optional string invite_message = 6;
+  string guest_name = 7;
+  string owner_name = 8;
+  GuestStatus guest_status = 9;
+}

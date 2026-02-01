@@ -1,0 +1,45 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode user-specific files
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Scripts folder (utility scripts, deployment, etc.)
+scripts/
+
+# Export options (contains signing info)
+ExportOptions.plist
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Crashlytics
+crashlytics-build.properties
+crashlytics.properties
+fabric.properties
+
+# claude
+.claude/screenshots

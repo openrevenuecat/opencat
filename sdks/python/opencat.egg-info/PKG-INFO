@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: opencat
+Version: 0.1.0
+Summary: Python SDK for OpenCat server
+Requires-Python: >=3.9
+Requires-Dist: httpx>=0.24
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21; extra == "dev"
+Requires-Dist: respx>=0.20; extra == "dev"

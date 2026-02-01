@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>576581738729-l9c5tdms11o5t0fhc86rmi7apu2hirqu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.576581738729-l9c5tdms11o5t0fhc86rmi7apu2hirqu</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBLohGBTqhAPqaoJD_ieI4QMNjwUr2Pn1o</string>
+	<key>GCM_SENDER_ID</key>
+	<string>576581738729</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>io.rushday.event.party.planner</string>
+	<key>PROJECT_ID</key>
+	<string>rushday-dev</string>
+	<key>STORAGE_BUCKET</key>
+	<string>rushday-dev.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:576581738729:ios:c0fff7dd4a43d1ddfbd078</string>
+</dict>
+</plist>
